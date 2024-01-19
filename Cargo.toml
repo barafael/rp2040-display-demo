@@ -1,0 +1,59 @@
+[workspace]
+
+[package]
+name = "display-demo"
+authors = ["Rafael Bachmann <rafael.bachmann.93@gmail.com>"]
+version = "0.2.0"
+publish = false
+license = "proprietary"
+readme = "readme.md"
+keywords = ["ssd1306"]
+categories = ["embedded", "no-std", "no-std::no-alloc"]
+edition = "2021"
+
+[dependencies]
+cortex-m = { version = "0.7", features = ["inline-asm"] }
+cortex-m-rt = "0.7"
+display-interface = "0.5"
+defmt = "0.3"
+defmt-rtt = "0.4"
+
+embassy-embedded-hal = { version = "*", git = "https://github.com/embassy-rs/embassy.git", features = [
+    "defmt",
+] }
+embassy-executor = { version = "*", git = "https://github.com/embassy-rs/embassy.git", features = [
+    "nightly",
+    "arch-cortex-m",
+    "executor-thread",
+    "executor-interrupt",
+    "defmt",
+    "integrated-timers",
+] }
+embassy-futures = { version = "*", git = "https://github.com/embassy-rs/embassy.git" }
+embassy-rp = { version = "*", git = "https://github.com/embassy-rs/embassy.git", features = [
+    "defmt",
+    "unstable-pac",
+    "time-driver",
+    "critical-section-impl",
+] }
+embassy-sync = { version = "*", git = "https://github.com/embassy-rs/embassy.git", features = [
+    "defmt",
+] }
+embassy-time = { version = "*", git = "https://github.com/embassy-rs/embassy.git", features = [
+    "defmt",
+    "defmt-timestamp-uptime",
+] }
+embassy-usb = { version = "*", git = "https://github.com/embassy-rs/embassy.git", features = [
+    "defmt",
+] }
+
+embedded-graphics = "0.8"
+panic-probe = { version = "0.3", features = ["print-defmt"] }
+ssd1306 = { git = "https://github.com/jamwaffles/ssd1306.git" }
+
+[profile.release]
+#strip = true
+debug = 2
+opt-level = 'z'
+lto = true
+codegen-units = 1
