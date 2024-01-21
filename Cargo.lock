@@ -90,12 +90,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ed570934406eb16438a4e976b1b4500774099c13b8cb96eec99f620f05090ddf"
 
 [[package]]
-name = "byte-slice-cast"
-version = "0.3.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b0a5e3906bcbf133e33c1d4d95afc664ad37fbdb9f6568d8043e7ea8c27d93d3"
-
-[[package]]
 name = "bytemuck"
 version = "1.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -295,6 +289,7 @@ dependencies = [
  "defmt",
  "defmt-rtt",
  "display-interface 0.5.0",
+ "display-interface-i2c",
  "embassy-embedded-hal",
  "embassy-executor",
  "embassy-futures",
@@ -304,7 +299,7 @@ dependencies = [
  "embassy-usb",
  "embedded-graphics",
  "panic-probe",
- "ssd1306",
+ "ssd1309",
 ]
 
 [[package]]
@@ -325,17 +320,6 @@ version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4895cd4e54e5536ef370d7f1eec787aad8275dd8ad15815aebfa71dd847b4ebf"
 dependencies = [
- "display-interface 0.4.1",
- "embedded-hal 0.2.7",
-]
-
-[[package]]
-name = "display-interface-spi"
-version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "489378ad054862146fbd1f09f51d585ccbe4bd1e2feadcda2a13ac33f840e1a5"
-dependencies = [
- "byte-slice-cast",
  "display-interface 0.4.1",
  "embedded-hal 0.2.7",
 ]
@@ -1309,13 +1293,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e6ecd384b10a64542d77071bd64bd7b231f4ed5940fba55e98c3de13824cf3d7"
 
 [[package]]
-name = "ssd1306"
-version = "0.8.4"
-source = "git+https://github.com/jamwaffles/ssd1306.git#0710c623f516f1ddc9eefa7fd7aee9b1fde8d0ae"
+name = "ssd1309"
+version = "0.4.0"
+source = "git+https://github.com/antonok-edm/ssd1309#5e815ae28935adbb855bc206746d4a6c0fa04cf6"
 dependencies = [
  "display-interface 0.4.1",
- "display-interface-i2c",
- "display-interface-spi",
  "embedded-graphics-core",
  "embedded-hal 0.2.7",
 ]

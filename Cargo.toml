@@ -49,7 +49,8 @@ embassy-usb = { version = "*", git = "https://github.com/embassy-rs/embassy.git"
 
 embedded-graphics = "0.8"
 panic-probe = { version = "0.3", features = ["print-defmt"] }
-ssd1306 = { git = "https://github.com/jamwaffles/ssd1306.git" }
+ssd1309 = { git = "https://github.com/antonok-edm/ssd1309" }
+display-interface-i2c = "0.4.0"
 
 [profile.release]
 #strip = true

@@ -4,6 +4,7 @@
 #![forbid(unsafe_code)]
 #![allow(rustdoc::bare_urls)]
 
+use crate::{formatter::Formatter, progressbar::ProgressBar};
 use core::fmt::Write;
 use embassy_executor::Spawner;
 use embassy_rp::{
@@ -21,10 +22,11 @@ use embedded_graphics::{
     prelude::*,
     text::{Alignment, Baseline, Text},
 };
-use ssd1306::{mode::DisplayConfig, rotation::DisplayRotation, size::DisplaySize128x64, Ssd1306};
 
-use crate::{formatter::Formatter, progressbar::ProgressBar};
-
+use display_interface_i2c::I2CInterface;
+use ssd1309::{
+    displayrotation::DisplayRotation, mode::GraphicsMode, prelude::DisplaySize, Builder,
+};
 use {defmt_rtt as _, panic_probe as _};
 
 mod formatter;
@@ -53,22 +55,20 @@ async fn main(_s: Spawner) {
     let mut watchdog = Watchdog::new(p.WATCHDOG);
 
     let i2c0_bus = i2c::I2c::new_async(p.I2C0, i2c0_scl, i2c0_sda, Irqs, i2c0_config);
-    let display_interface = ssd1306::I2CDisplayInterface::new(i2c0_bus);
-    let mut display = Ssd1306::new(
-        display_interface,
-        DisplaySize128x64,
-        DisplayRotation::Rotate0,
-    )
-    .into_buffered_graphics_mode();
+    let display_interface = I2CInterface::new(i2c0_bus, 0x3C, 0x40);
+    let mut display: GraphicsMode<_> = Builder::new()
+        .with_size(DisplaySize::Display128x64)
+        .with_rotation(DisplayRotation::Rotate0)
+        .connect(display_interface)
+        .into();
 
-    oled_reset.set_high();
-    oled_reset.set_low();
-    Timer::after_millis(10).await;
-    oled_reset.set_high();
+    let mut delay = embassy_time::Delay;
+
+    display.reset(&mut oled_reset, &mut delay).unwrap();
 
     display.init().expect("Display connected?");
 
-    display.clear(BinaryColor::Off).unwrap();
+    display.clear();
     display.flush().unwrap();
 
     const INTRO_STYLE: MonoTextStyle<'_, BinaryColor> =
@@ -97,7 +97,7 @@ async fn main(_s: Spawner) {
     let mut pb = ProgressBar::new(10, 35, 108, 10);
     let mut index = 0u64;
     loop {
-        display.clear(BinaryColor::Off).unwrap();
+        display.clear();
         let progress = (index % 100) as f32 * (1.0 / 100.0);
         if let Err(e) = pb.draw(progress, &mut display) {
             on_bus_error(&mut watchdog, &mut led).await;
