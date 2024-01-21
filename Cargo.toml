@@ -51,6 +51,8 @@ embedded-graphics = "0.8"
 panic-probe = { version = "0.3", features = ["print-defmt"] }
 ssd1309 = { git = "https://github.com/antonok-edm/ssd1309" }
 display-interface-i2c = "0.4.0"
+static_cell = { version = "2", features = ["nightly"] }
+portable-atomic = { version = "1", features = ["critical-section"] }
 
 [profile.release]
 #strip = true
