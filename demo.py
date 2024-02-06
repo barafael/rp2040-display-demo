@@ -34,8 +34,8 @@ index = 0
 while True:
     while start.value() == 0:
         continue
-    while start.value() == 1:
-        continue
+    #while start.value() == 1:
+        #continue
     oled.fill(0)
     progress = (index % 100) * (1.0 / 100.0)
     pb1.draw(progress, oled)

@@ -105,9 +105,9 @@ async fn progress(
         while button.is_low() {
             continue;
         }
-        while button.is_high() {
-            continue;
-        }
+        //while button.is_high() {
+        //continue;
+        //}
         display.clear();
         let progress = (index % 100) as f32 * (1.0 / 100.0);
         trace!("loop {}", progress);
