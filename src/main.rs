@@ -7,6 +7,7 @@
 use crate::progressbar::ProgressBar;
 use cortex_m::prelude::_embedded_hal_blocking_delay_DelayMs;
 use defmt::{info, trace};
+use embassy_embedded_hal::adapter::YieldingAsync;
 use embassy_executor::Executor;
 use embassy_rp::{
     bind_interrupts,
@@ -86,25 +87,34 @@ fn main() -> ! {
 
     spawn_core1(p.CORE1, CORE1_STACK.init(Stack::new()), move || {
         let executor1 = EXECUTOR1.init(Executor::new());
-        executor1.run(|spawner| spawner.spawn(progress(display, button, watchdog)).unwrap())
+        executor1.run(|spawner| {
+            spawner
+                .spawn(progress(display, button, led, watchdog))
+                .unwrap()
+        })
     });
 
-    let executor0 = EXECUTOR0.init(Executor::new());
-    executor0.run(|spawner| spawner.spawn(blinky(led)).unwrap());
+    loop {
+        continue;
+    }
+
+    //let executor0 = EXECUTOR0.init(Executor::new());
+    //executor0.run(|spawner| spawner.spawn(blinky(led)).unwrap());
 }
 
 #[embassy_executor::task]
 async fn progress(
     mut display: GraphicsMode<I2CInterface<I2c<'static, I2C0, i2c::Async>>>,
     button: Input<'static, PIN_5>,
+    mut led: Output<'static, PIN_25>,
     mut watchdog: Watchdog,
 ) -> ! {
     let mut pb = ProgressBar::new(10, 35, 108, 10);
     let mut index = 0u64;
     loop {
-        while button.is_low() {
-            continue;
-        }
+        //while button.is_low() {
+        //continue;
+        //}
         //while button.is_high() {
         //continue;
         //}
@@ -112,17 +122,18 @@ async fn progress(
         let progress = (index % 100) as f32 * (1.0 / 100.0);
         trace!("loop {}", progress);
         if let Err(_e) = pb.draw(progress, &mut display) {
-            on_bus_error(&mut watchdog);
+            on_bus_error(&mut watchdog, led);
         }
         if let Err(_e) = display.flush() {
-            on_bus_error(&mut watchdog);
+            on_bus_error(&mut watchdog, led);
         }
         index += 1;
     }
 }
 
-fn on_bus_error(wdg: &mut Watchdog) -> ! {
+fn on_bus_error(wdg: &mut Watchdog, mut led: Output<'static, PIN_25>) -> ! {
     wdg.trigger_reset();
+    led.toggle();
     unreachable!("Watchdog triggered");
 }
 
