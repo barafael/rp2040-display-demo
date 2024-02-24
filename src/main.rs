@@ -5,6 +5,7 @@
 #![allow(rustdoc::bare_urls)]
 
 use crate::progressbar::ProgressBar;
+use core::fmt::Write;
 use cortex_m::prelude::_embedded_hal_blocking_delay_DelayMs;
 use defmt::{info, trace};
 use embassy_executor::Executor;
@@ -14,24 +15,32 @@ use embassy_rp::{
     gpio::{Input, Level, Output, Pull},
     i2c::{self, I2c},
     multicore::{spawn_core1, Stack},
-    peripherals::{I2C0, PIN_25, PIN_5},
+    peripherals::{I2C0, PIN_16, PIN_20, PIN_25, PIN_26, PIN_5, SPI1},
+    spi::{self, Phase, Polarity, Spi},
     watchdog::Watchdog,
 };
 use embassy_time::Timer;
+use embedded_graphics::{
+    geometry::Point,
+    mono_font::MonoTextStyle,
+    pixelcolor::BinaryColor,
+    text::{Alignment, Text},
+};
 
-pub const CORE1_STACK_SIZE: usize = 65_536;
-
-static CORE1_STACK: StaticCell<Stack<CORE1_STACK_SIZE>> = StaticCell::new();
-static EXECUTOR1: StaticCell<Executor> = StaticCell::new();
-static EXECUTOR0: StaticCell<Executor> = StaticCell::new();
-
-use display_interface_i2c::I2CInterface;
+use crate::formatter::Formatter;
+use display_interface_spi::SPIInterface;
 use ssd1309::{
     displayrotation::DisplayRotation, mode::GraphicsMode, prelude::DisplaySize, Builder,
 };
 use static_cell::StaticCell;
 use {defmt_rtt as _, panic_probe as _};
 
+pub const CORE1_STACK_SIZE: usize = 65_536;
+static CORE1_STACK: StaticCell<Stack<CORE1_STACK_SIZE>> = StaticCell::new();
+static EXECUTOR1: StaticCell<Executor> = StaticCell::new();
+static EXECUTOR0: StaticCell<Executor> = StaticCell::new();
+
+mod formatter;
 mod progressbar;
 
 const I2C0_FREQUENCY_HZ: u32 = 400_000;
@@ -46,11 +55,20 @@ fn main() -> ! {
     info!("Hi display demo");
     let p = embassy_rp::init(Config::default());
 
-    let mut i2c0_config = i2c::Config::default();
-    i2c0_config.frequency = I2C0_FREQUENCY_HZ;
+    let mosi = p.PIN_11;
+    let clk = p.PIN_10;
+    let cs = p.PIN_16;
+    let dc = Output::new(p.PIN_20, Level::Low);
 
-    let i2c0_sda = p.PIN_0;
-    let i2c0_scl = p.PIN_1;
+    // create SPI
+    let mut config = spi::Config::default();
+    config.frequency = 2_000_000; //dof
+    config.phase = Phase::CaptureOnFirstTransition;
+    config.polarity = Polarity::IdleLow;
+    let spi = Spi::new_blocking_txonly(p.SPI1, clk, mosi, config);
+
+    // Configure CS
+    let cs = Output::new(cs, Level::Low); //dof
 
     let button = Input::new(p.PIN_5, Pull::None);
 
@@ -60,8 +78,7 @@ fn main() -> ! {
     let watchdog = Watchdog::new(p.WATCHDOG);
 
     let mut delay = embassy_time::Delay;
-    let i2c0_bus = i2c::I2c::new_async(p.I2C0, i2c0_scl, i2c0_sda, Irqs, i2c0_config);
-    let display_interface = I2CInterface::new(i2c0_bus, 0x3C, 0x40);
+    let display_interface = SPIInterface::new(spi, dc, cs);
     let mut display: GraphicsMode<_> = Builder::new()
         .with_size(DisplaySize::Display128x64)
         .with_rotation(DisplayRotation::Rotate0)
@@ -70,19 +87,16 @@ fn main() -> ! {
     display
         .reset(&mut oled_reset, &mut embassy_time::Delay)
         .unwrap();
-    oled_reset.set_high();
-    oled_reset.set_low();
-    delay.delay_ms(10u32);
-    oled_reset.set_high();
-    display.init().unwrap();
-    display.flush().unwrap();
 
     display.reset(&mut oled_reset, &mut delay).unwrap();
 
     display.init().expect("Display connected?");
+    info!("Display connected");
 
     display.clear();
+    info!("Display cleared");
     display.flush().unwrap();
+    info!("Display flushed");
 
     spawn_core1(p.CORE1, CORE1_STACK.init(Stack::new()), move || {
         let executor1 = EXECUTOR1.init(Executor::new());
@@ -93,22 +107,50 @@ fn main() -> ! {
     executor0.run(|spawner| spawner.spawn(blinky(led)).unwrap());
 }
 
+pub use embedded_graphics::{
+    image::Image,
+    mono_font::{
+        ascii::FONT_10X20 as LOGO_FONT, ascii::FONT_7X13 as INTRO_FONT,
+        iso_8859_7::FONT_6X12 as RESULT_FONT,
+    },
+    prelude::*,
+    text::Baseline,
+};
+pub const RESULT_STYLE: MonoTextStyle<'_, BinaryColor> =
+    MonoTextStyle::new(&RESULT_FONT, BinaryColor::On);
+
 #[embassy_executor::task]
 async fn progress(
-    mut display: GraphicsMode<I2CInterface<I2c<'static, I2C0, i2c::Async>>>,
+    mut display: GraphicsMode<
+        SPIInterface<
+            Spi<'static, SPI1, spi::Blocking>,
+            Output<'static, PIN_20>,
+            Output<'static, PIN_16>,
+        >,
+    >,
     button: Input<'static, PIN_5>,
     mut watchdog: Watchdog,
 ) -> ! {
+    info!("progress");
     let mut pb = ProgressBar::new(10, 35, 108, 10);
     let mut index = 0u64;
+    let mut buffer = Formatter::<6>::new();
     loop {
-        while button.is_low() {
-            continue;
-        }
-        //while button.is_high() {
-        //continue;
-        //}
+        info!("clearing");
         display.clear();
+        info!("cleared");
+
+        let times = index / 100;
+        write!(buffer, "{times}").unwrap();
+        Text::with_alignment(
+            buffer.as_str(),
+            Point::new(64, 15),
+            RESULT_STYLE,
+            Alignment::Center,
+        )
+        .draw(&mut display)
+        .unwrap();
+        buffer.clear();
         let progress = (index % 100) as f32 * (1.0 / 100.0);
         trace!("loop {}", progress);
         if let Err(_e) = pb.draw(progress, &mut display) {
