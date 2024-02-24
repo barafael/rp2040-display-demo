@@ -6,16 +6,13 @@
 
 use crate::progressbar::ProgressBar;
 use core::fmt::Write;
-use cortex_m::prelude::_embedded_hal_blocking_delay_DelayMs;
 use defmt::{info, trace};
 use embassy_executor::Executor;
 use embassy_rp::{
-    bind_interrupts,
     config::Config,
     gpio::{Input, Level, Output, Pull},
-    i2c::{self, I2c},
     multicore::{spawn_core1, Stack},
-    peripherals::{I2C0, PIN_16, PIN_20, PIN_25, PIN_26, PIN_5, SPI1},
+    peripherals::{PIN_16, PIN_17, PIN_20, PIN_25, PIN_26, PIN_5, SPI0},
     spi::{self, Phase, Polarity, Spi},
     watchdog::Watchdog,
 };
@@ -43,29 +40,22 @@ static EXECUTOR0: StaticCell<Executor> = StaticCell::new();
 mod formatter;
 mod progressbar;
 
-const I2C0_FREQUENCY_HZ: u32 = 400_000;
-
-// Bind interrupts to the handlers inside embassy.
-bind_interrupts!(struct Irqs {
-    I2C0_IRQ => i2c::InterruptHandler<I2C0>;
-});
-
 #[cortex_m_rt::entry]
 fn main() -> ! {
     info!("Hi display demo");
     let p = embassy_rp::init(Config::default());
 
-    let mosi = p.PIN_11;
-    let clk = p.PIN_10;
-    let cs = p.PIN_16;
-    let dc = Output::new(p.PIN_20, Level::Low);
+    let mosi = p.PIN_19;
+    let clk = p.PIN_18;
+    let cs = p.PIN_17;
+    let dc = Output::new(p.PIN_16, Level::Low);
 
     // create SPI
     let mut config = spi::Config::default();
     config.frequency = 2_000_000; //dof
     config.phase = Phase::CaptureOnFirstTransition;
     config.polarity = Polarity::IdleLow;
-    let spi = Spi::new_blocking_txonly(p.SPI1, clk, mosi, config);
+    let spi = Spi::new_blocking_txonly(p.SPI0, clk, mosi, config);
 
     // Configure CS
     let cs = Output::new(cs, Level::Low); //dof
@@ -123,9 +113,9 @@ pub const RESULT_STYLE: MonoTextStyle<'_, BinaryColor> =
 async fn progress(
     mut display: GraphicsMode<
         SPIInterface<
-            Spi<'static, SPI1, spi::Blocking>,
-            Output<'static, PIN_20>,
+            Spi<'static, SPI0, spi::Blocking>,
             Output<'static, PIN_16>,
+            Output<'static, PIN_17>,
         >,
     >,
     button: Input<'static, PIN_5>,
