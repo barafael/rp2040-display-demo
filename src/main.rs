@@ -6,7 +6,6 @@
 
 use core::fmt::Write;
 
-use crate::formatter::Formatter;
 use crate::progressbar::ProgressBar;
 
 use defmt::info;
@@ -27,6 +26,7 @@ use embedded_graphics::{
     prelude::*,
     text::{Alignment, Text},
 };
+use heapless::String;
 use ssd1309::{
     displayrotation::DisplayRotation, mode::GraphicsMode, prelude::DisplaySize, Builder,
 };
@@ -40,7 +40,6 @@ static EXECUTOR0: StaticCell<Executor> = StaticCell::new();
 
 pub const STYLE: MonoTextStyle<'_, BinaryColor> = MonoTextStyle::new(&FONT_6X12, BinaryColor::On);
 
-mod formatter;
 mod progressbar;
 
 #[cortex_m_rt::entry]
@@ -99,7 +98,7 @@ async fn progress(
 ) -> ! {
     let mut pb = ProgressBar::new(10, 35, 108, 8);
     let mut index = 0u64;
-    let mut buffer = Formatter::<6>::new();
+    let mut buffer = String::<6>::new();
     loop {
         display.clear();
 
