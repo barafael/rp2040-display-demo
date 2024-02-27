@@ -15,7 +15,7 @@ use embassy_rp::{
     config::Config,
     gpio::{Level, Output},
     multicore::{spawn_core1, Stack},
-    peripherals::{PIN_16, PIN_17, PIN_25, SPI0},
+    peripherals::{PIN_0, PIN_1, PIN_25, SPI0},
     spi::{self, Phase, Polarity, Spi},
     watchdog::Watchdog,
 };
@@ -56,10 +56,10 @@ fn main() -> ! {
     config.phase = Phase::CaptureOnFirstTransition;
     config.polarity = Polarity::IdleLow;
 
-    let tx = p.PIN_19;
-    let clk = p.PIN_18;
-    let cs = Output::new(p.PIN_17, Level::Low);
-    let dc = Output::new(p.PIN_16, Level::Low);
+    let tx = p.PIN_3;
+    let clk = p.PIN_2;
+    let cs = Output::new(p.PIN_1, Level::Low);
+    let dc = Output::new(p.PIN_0, Level::Low);
     let spi = Spi::new_blocking_txonly(p.SPI0, clk, tx, config);
 
     let display_interface = SPIInterface::new(spi, dc, cs);
@@ -90,8 +90,8 @@ async fn progress(
     mut display: GraphicsMode<
         SPIInterface<
             Spi<'static, SPI0, spi::Blocking>,
-            Output<'static, PIN_16>,
-            Output<'static, PIN_17>,
+            Output<'static, PIN_0>,
+            Output<'static, PIN_1>,
         >,
     >,
     mut watchdog: Watchdog,
